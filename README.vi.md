@@ -2,7 +2,7 @@
 
 [English](README.md) | Tiếng Việt
 
-![Herdr Cook Plan: một coordinator, mỗi phase một pane worker mới, ledger và context guard](assets/cover-vi.webp)
+![Herdr Cook Plan: một coordinator, mỗi phase một pane worker mới, ledger và context guard](assets/herdr-cook-plan-vi.webp)
 
 Skill cho coding agent, chạy một [AgentKit](https://agentkit.best/?ref=OMG49S8R) plan có sẵn qua
 [Herdr](https://herdr.dev) theo từng phase. Mỗi phase có một worker agent mới trong pane Herdr riêng,
@@ -99,9 +99,13 @@ và bảng lỗi nằm trong [docs/workflow.md](docs/workflow.md) (tiếng Anh).
 ## Yêu cầu
 
 - Herdr 0.9.1 trở lên, và skill phải được gọi **bên trong một pane Herdr** (`HERDR_ENV=1`).
+- [Herdr agent skill](https://herdr.dev/docs/agent-skill/), dạy agent cách điều khiển Herdr (pane,
+  agent, chờ tiến trình). Cài bằng Node.js: `npx skills add herdrdev/herdr --skill herdr -g`
+  (bỏ `-g` nếu chỉ cài cho dự án hiện tại).
 - Integration của Herdr ở trạng thái `current` cho mọi runtime worker bạn dùng:
   `herdr integration status`, rồi `herdr integration install <kind>` cho kind nào còn thiếu.
-- Engineer Kit của AgentKit trong mỗi runtime worker, vì worker chạy `ak:cook`:
+- [Engineer Kit của AgentKit](https://agentkit.best/?ref=OMG49S8R) (link giới thiệu) trong mỗi runtime
+  worker, vì worker chạy `ak:cook`:
   `ak kit init engineer --target <runtime> --yes`
 - Python 3 (cho bước kiểm tra đóng run). Rất nên dùng Git: mỗi phase được nghiệm thu thành một commit.
 

@@ -2,7 +2,7 @@
 
 English | [Tiếng Việt](README.vi.md)
 
-![Herdr Cook Plan: one coordinator, a fresh worker pane per phase, ledger and context guard](assets/cover-en.webp)
+![Herdr Cook Plan: one coordinator, a fresh worker pane per phase, ledger and context guard](assets/herdr-cook-plan-en.webp)
 
 A coding-agent skill that runs an existing [AgentKit](https://agentkit.best/?ref=OMG49S8R) plan phase by
 phase through [Herdr](https://herdr.dev). Every phase gets a fresh worker agent in its own Herdr pane,
@@ -98,9 +98,13 @@ restarted coordinator recovers in the same session. The full loop, state files a
 ## Requirements
 
 - Herdr 0.9.1 or newer, and the skill invoked **inside a Herdr pane** (`HERDR_ENV=1`).
+- The [Herdr agent skill](https://herdr.dev/docs/agent-skill/), which teaches agents to drive Herdr
+  (panes, agents, waits). Install it with Node.js: `npx skills add herdrdev/herdr --skill herdr -g`
+  (omit `-g` to install it into the current project only).
 - A Herdr integration at `current` for every worker runtime you use:
   `herdr integration status`, then `herdr integration install <kind>` for any that is missing.
-- AgentKit's Engineer Kit in each worker runtime, because workers run `ak:cook`:
+- [AgentKit's Engineer Kit](https://agentkit.best/?ref=OMG49S8R) (referral link) in each worker runtime,
+  because workers run `ak:cook`:
   `ak kit init engineer --target <runtime> --yes`
 - Python 3 (for the completion check). Git is strongly recommended: each accepted phase becomes one commit.
 
