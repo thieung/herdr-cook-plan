@@ -1,5 +1,9 @@
 # Herdr Cook Plan
 
+English | [Tiếng Việt](README.vi.md)
+
+![Herdr Cook Plan: one coordinator, a fresh worker pane per phase, ledger and context guard](assets/cover.webp)
+
 A coding-agent skill that runs an existing [AgentKit](https://agentkit.best/?ref=OMG49S8R) plan phase by
 phase through [Herdr](https://herdr.dev). Every phase gets a fresh worker agent in its own Herdr pane,
 sequentially or in parallel depending on dependencies. The coordinator supervises from its own pane: it
