@@ -2,7 +2,7 @@
 
 [English](README.md) | Tiếng Việt
 
-![Herdr Cook Plan: một coordinator, mỗi phase một pane worker mới, ledger và context guard](assets/cover.webp)
+![Herdr Cook Plan: một coordinator, mỗi phase một pane worker mới, ledger và context guard](assets/cover-vi.webp)
 
 Skill cho coding agent, chạy một [AgentKit](https://agentkit.best/?ref=OMG49S8R) plan có sẵn qua
 [Herdr](https://herdr.dev) theo từng phase. Mỗi phase có một worker agent mới trong pane Herdr riêng,
@@ -11,11 +11,88 @@ worker qua mailbox dạng file, xác minh bằng chứng của từng phase, com
 Coordinator không bao giờ tự implement một phase, nên nó chịu được compaction, hết quota hay đổi provider
 mà không phải mang theo phần việc.
 
-Skill phiên bản 1.0.0. Giấy phép MIT.
+Giấy phép MIT.
 
 > **Bản công khai, cung cấp nguyên trạng.** Full support có ở phiên bản dành cho thành viên
 > [nhóm Facebook Subscribers của Thieu Nguyen](https://www.facebook.com/groups/1312173340952529).
 > Issue và pull request ở đây luôn được chào đón nhưng có thể không được phản hồi.
+
+## Vì sao cần skill này
+
+Chạy cả một plan nhiều phase trong một session agent duy nhất sẽ hỏng theo những kiểu dễ đoán:
+
+- **Compaction dồn lên nhau.** Một plan dài làm đầy context window nhiều lần. Mỗi lần auto-compaction,
+  chi tiết bị thay bằng bản tóm tắt: đường dẫn file, quyết định, ràng buộc và mạch suy luận dang dở rơi
+  mất, và các phase sau được xây trên bản tóm tắt thiếu hụt của các phase trước. Chất lượng giảm dần
+  sau mỗi lần compaction, agent có thể làm lại việc đã xong hoặc bỏ qua bước nó tưởng đã làm.
+- **Nhiễu bị mang theo.** Log, lần thử hỏng và quá trình debug của phase 1 vẫn còn trong context khi
+  phase 4 bắt đầu, vừa tốn token vừa kéo sự chú ý khỏi phase hiện tại.
+- **Tự chấm "xong".** Agent viết code cũng là agent quyết định nó đã xong; terminal im lặng hay một bản
+  tóm tắt tự tin bị coi là thành công.
+- **Bạn thành người điều phối.** Phải có người gõ "làm tiếp đi", trả lời câu hỏi, phát hiện chỗ kẹt và
+  nhớ phase nào đến lượt.
+
+Herdr Cook Plan tách vai trò:
+
+- **Mỗi phase bắt đầu với context sạch và đầy đủ.** Worker mới chỉ nhận brief của phase, plan và
+  repository, nên ít khi chạm tới compaction và không thừa hưởng nhiễu của phase khác. Nếu worker vẫn
+  cạn context, nó để lại notes và handoff cho một attempt mới.
+- **Coordinator luôn nhẹ.** Nó chỉ giữ lịch, câu trả lời và bằng chứng, không giữ phần implement. Khi có
+  compaction, trạng thái nằm trên đĩa (checkpoint, ledger, lease) nên nó khôi phục chính xác thay vì dựa
+  vào trí nhớ.
+- **Xong nghĩa là có bằng chứng.** Phase chỉ được tính khi có report hoàn tất, diff đúng phạm vi và
+  check pass, do một agent khác với agent viết code xác minh.
+- **Mỗi phase một commit.** Lịch sử review, revert hay bisect được theo từng phase, kèm ledger chỉ ghi
+  thêm cho mọi quyết định.
+- **Song song khi an toàn.** Phase độc lập chạy cạnh nhau; phase ghi chồng file thì chạy tuần tự.
+- **Chỉ hỏi bạn những quyết định thật.** Câu hỏi đi qua mailbox. Với `--auto`, coordinator tự quyết
+  trong phạm vi plan và ghi lý do; không bao giờ tự cho phép mở rộng scope, publish hay thao tác phá hủy.
+- **Crash hay hết quota không làm mất việc.** Phase đã nghiệm thu không bao giờ bị chạy lại; run tiếp
+  tục từ checkpoint.
+- **Không để lại rác.** Pane của worker đóng ngay khi phase được nghiệm thu, và một bước kiểm tra cuối
+  xác minh việc dọn dẹp.
+- **Kết hợp nhiều runtime.** Coordinator có thể chạy trên một agent (ví dụ Codex) còn worker chạy trên
+  agent khác (ví dụ OMP).
+
+Không phù hợp cho thay đổi nhỏ gói gọn trong một session, cho việc chưa có plan (hãy viết plan trước),
+hoặc khi muốn giao hẳn công việc cho một agent khác.
+
+## Cách hoạt động
+
+```mermaid
+flowchart TB
+    plan["plan.md + phase-*.md"] --> coord["Pane coordinator<br/>lập lịch, trả lời, xác minh"]
+    coord -->|"dispatch theo từng đợt"| workers
+    subgraph workers["Mỗi phase một pane worker mới"]
+        direction LR
+        w1["p01a01<br/>đợt 1"]
+        w2["p02a01<br/>đợt 2"]
+        w3["p03a01<br/>đợt 2"]
+    end
+    workers <-.->|"file câu hỏi và câu trả lời"| mail[("mail/")]
+    workers -->|"report: complete"| check{"Diff đúng phạm vi?<br/>Check pass?"}
+    check -->|"có"| commit["Commit phase<br/>đóng pane của nó"]
+    check -->|"không"| repair["Repair bằng worker mới"]
+    commit --> state[("checkpoint.md<br/>ledger.jsonl")]
+```
+
+1. **Kiểm cổng.** Đang ở trong Herdr, Herdr 0.9.1 trở lên, integration đều `current`. Thiếu cổng nào là
+   dừng run.
+2. **Bảng đợt thực hiện.** Phase, dependency, phạm vi ghi, runtime và cách kiểm tra; phase độc lập chạy
+   song song, mặc định hai worker.
+3. **Dispatch.** Mỗi attempt một pane mới và một agent mới (`p02a01`, rồi `p02a02`), nhận prompt từ một
+   file brief đã kiểm tra.
+4. **Giám sát.** Mỗi vòng quét mailbox và chờ từng worker. Terminal idle không phải là thành công; hết
+   giờ chờ không phải là đồng ý.
+5. **Nghiệm thu và commit.** Phase được nghiệm thu khi có report `status: complete`, agent đã settle, diff
+   đúng phạm vi và check pass. Ý định được ghi vào checkpoint trước, rồi commit chỉ các path của phase đó,
+   rồi thêm dòng `phase-accepted` kèm SHA vào ledger. Pane của worker được đóng trước lần dispatch kế tiếp.
+6. **Đóng run.** `implementation-summary.md`, `scripts/check-run-closed.py`, `run-completed`, và nhả
+   lease sau cùng.
+
+Trạng thái run nằm trong file dưới `<plan-dir>/reports/herdr-cook-runs/<runId>/`, nên coordinator bị
+compaction hay restart vẫn khôi phục được ngay trong session đó. Toàn bộ vòng chạy, các file trạng thái
+và bảng lỗi nằm trong [docs/workflow.md](docs/workflow.md) (tiếng Anh).
 
 ## Yêu cầu
 
@@ -78,30 +155,10 @@ $herdr-cook-plan plan.md --select-agent --auto --advice  # Codex
 | `--parallel` | Ưu tiên chạy song song; dependency và xung đột ghi vẫn buộc chạy tuần tự. |
 | `--advice`, `--tdd`, các flag cook khác | Chuyển xuống `ak:cook` sau khi đối chiếu với bản cook đã cài. |
 
-## Một run diễn ra thế nào
-
-1. **Kiểm cổng.** Đang ở trong Herdr, Herdr 0.9.1 trở lên, integration đều `current`. Thiếu cổng nào là
-   dừng run.
-2. **Bảng đợt thực hiện.** Phase, dependency, phạm vi ghi, runtime và cách kiểm tra; phase độc lập chạy
-   song song, mặc định hai worker.
-3. **Dispatch.** Mỗi attempt một pane mới và một agent mới (`p02a01`, rồi `p02a02`), nhận prompt từ một
-   file brief đã kiểm tra.
-4. **Giám sát.** Mỗi vòng quét mailbox và chờ từng worker. Terminal idle không phải là thành công; hết
-   giờ chờ không phải là đồng ý.
-5. **Nghiệm thu và commit.** Phase được nghiệm thu khi có report `status: complete`, agent đã settle, diff
-   đúng phạm vi và check pass. Ý định được ghi vào checkpoint trước, rồi commit chỉ các path của phase đó,
-   rồi thêm dòng `phase-accepted` kèm SHA vào ledger. Pane của worker được đóng trước lần dispatch kế tiếp.
-6. **Đóng run.** `implementation-summary.md`, `scripts/check-run-closed.py`, `run-completed`, và nhả
-   lease sau cùng.
-
-Trạng thái run nằm trong file dưới `<plan-dir>/reports/herdr-cook-runs/<runId>/`, nên coordinator bị
-compaction hay restart vẫn khôi phục được ngay trong session đó. Toàn bộ vòng chạy, các file trạng thái
-và bảng lỗi nằm trong [docs/workflow.md](docs/workflow.md) (tiếng Anh).
-
 ## Tình trạng và giới hạn đã biết
 
 - Nhắc khôi phục tự động (context guard) chỉ có trên OMP. Runtime khác khôi phục từ các file checkpoint.
-- Guard đã có unit test; hành vi của nó dưới một lần compaction thật chưa được quan sát trên 1.0.0.
+- Guard đã có unit test; hành vi của nó dưới một lần compaction thật chưa được quan sát.
 - Live smoke đến nay còn giới hạn: hai phase được nghiệm thu và commit, bước kiểm tra đóng run pass.
 - Worker vẫn có thể ghi thêm `plans/journals/*` ngoài phạm vi ghi của phase.
 - Khả năng chạy cook trên Claude Code và Codex phải được dò trên máy bạn trước lần dispatch đầu.

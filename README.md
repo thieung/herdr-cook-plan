@@ -2,7 +2,7 @@
 
 English | [Tiếng Việt](README.vi.md)
 
-![Herdr Cook Plan: one coordinator, a fresh worker pane per phase, ledger and context guard](assets/cover.webp)
+![Herdr Cook Plan: one coordinator, a fresh worker pane per phase, ledger and context guard](assets/cover-en.webp)
 
 A coding-agent skill that runs an existing [AgentKit](https://agentkit.best/?ref=OMG49S8R) plan phase by
 phase through [Herdr](https://herdr.dev). Every phase gets a fresh worker agent in its own Herdr pane,
@@ -11,11 +11,87 @@ answers worker questions through a file mailbox, verifies each phase's evidence,
 the panes it opened. It never implements a phase itself, so it survives compaction, quota exhaustion
 and provider fallback without carrying the work.
 
-Skill version 1.0.0. MIT licensed.
+MIT licensed.
 
 > **Public edition, provided as-is.** Full support is available in the edition for members of
 > [Thieu Nguyen's Facebook Subscribers group](https://www.facebook.com/groups/1312173340952529).
 > Issues and pull requests here are welcome but may not get a response.
+
+## Why this skill
+
+Running a whole multi-phase plan in one agent session breaks down in predictable ways:
+
+- **Compaction compounds.** A long plan fills the context window several times over. Each
+  auto-compaction replaces detail with a summary: file paths, decisions, constraints and half-finished
+  reasoning get dropped, and later phases are built on a lossy summary of the earlier ones. Quality
+  slides with every compaction, and the agent may redo work or skip steps it believes are done.
+- **Noise carries over.** Logs, failed attempts and debugging from phase 1 are still in context when
+  phase 4 starts. They cost tokens and pull attention away from the current phase.
+- **"Done" is self-graded.** The agent that wrote the code also decides it is finished, and an idle
+  terminal or a confident summary gets treated as success.
+- **You become the scheduler.** Someone has to type "continue", answer questions, notice a stall and
+  remember which phase comes next.
+
+Herdr Cook Plan separates the roles:
+
+- **Every phase starts with a clean, full context.** A fresh worker gets only its phase brief, the plan
+  and the repository, so it is far less likely to hit compaction and never inherits another phase's
+  noise. If a worker still runs low, it leaves notes and a handoff for a fresh attempt.
+- **The coordinator stays light.** It holds the schedule, the answers and the evidence, not the
+  implementation. When it does compact, the state is on disk (checkpoint, ledger, lease), so it recovers
+  exactly instead of from memory.
+- **Done means evidence.** A phase counts only with a complete report, a scoped diff and passing checks,
+  verified by an agent other than the one that wrote it.
+- **One commit per phase.** History you can review, revert or bisect phase by phase, plus an append-only
+  ledger of every decision.
+- **Parallel where it is safe.** Independent phases run side by side; overlapping writes are serialized.
+- **You are asked only for real decisions.** Questions travel through the mailbox. With `--auto` the
+  coordinator decides inside the plan's scope and records why; it never authorizes scope growth,
+  publishing or destructive operations.
+- **Crashes and quota limits do not lose work.** Accepted phases are never replayed; the run resumes
+  from its checkpoint.
+- **Nothing is left behind.** Worker panes close as their phases are accepted, and a completion check
+  verifies the cleanup.
+- **Mix runtimes.** The coordinator can run on one agent (Codex, say) and the workers on another (OMP).
+
+Not the right tool for a change that fits in one session, for work that has no plan yet (write the plan
+first), or for handing a task off to another agent entirely.
+
+## How it works
+
+```mermaid
+flowchart TB
+    plan["plan.md + phase-*.md"] --> coord["Coordinator pane<br/>schedules, answers, verifies"]
+    coord -->|"dispatch, wave by wave"| workers
+    subgraph workers["One fresh worker pane per phase"]
+        direction LR
+        w1["p01a01<br/>wave 1"]
+        w2["p02a01<br/>wave 2"]
+        w3["p03a01<br/>wave 2"]
+    end
+    workers <-.->|"question and answer files"| mail[("mail/")]
+    workers -->|"report: complete"| check{"Scoped diff?<br/>Checks pass?"}
+    check -->|"yes"| commit["Commit the phase<br/>close its pane"]
+    check -->|"no"| repair["Repair in a fresh worker"]
+    commit --> state[("checkpoint.md<br/>ledger.jsonl")]
+```
+
+1. **Gates.** Inside Herdr, Herdr 0.9.1+, integrations current. Any failure stops the run.
+2. **Wave table.** Phases, dependencies, write scope, runtime and checks; independent phases run in
+   parallel, two workers by default.
+3. **Dispatch.** A new pane and a new agent per attempt (`p02a01`, then `p02a02`), prompted from a
+   checked brief file.
+4. **Supervise.** Each round scans the mailbox and waits on every worker. An idle terminal is not
+   success; a timeout is not approval.
+5. **Accept and commit.** A phase is accepted on a `status: complete` report, a settled agent, a scoped
+   diff and passing checks. Intent goes to the checkpoint first, then a commit of only that phase's
+   paths, then a `phase-accepted` ledger line with the SHA. The worker pane closes before the next dispatch.
+6. **Close the run.** `implementation-summary.md`, `scripts/check-run-closed.py`, `run-completed`, and
+   the lease released last.
+
+Run state lives in files under `<plan-dir>/reports/herdr-cook-runs/<runId>/`, so a compacted or
+restarted coordinator recovers in the same session. The full loop, state files and failure map are in
+[docs/workflow.md](docs/workflow.md).
 
 ## Requirements
 
@@ -79,30 +155,11 @@ $herdr-cook-plan plan.md --select-agent --auto --advice  # Codex
 | `--parallel` | Prefer parallel scheduling; dependencies and write conflicts still force serial runs. |
 | `--advice`, `--tdd`, other cook flags | Forwarded to `ak:cook` after checking the installed cook. |
 
-## How a run works
-
-1. **Gates.** Inside Herdr, Herdr 0.9.1+, integrations current. Any failure stops the run.
-2. **Wave table.** Phases, dependencies, write scope, runtime and checks; independent phases run in
-   parallel, two workers by default.
-3. **Dispatch.** A new pane and a new agent per attempt (`p02a01`, then `p02a02`), prompted from a
-   checked brief file.
-4. **Supervise.** Each round scans the mailbox and waits on every worker. An idle terminal is not
-   success; a timeout is not approval.
-5. **Accept and commit.** A phase is accepted on a `status: complete` report, a settled agent, a scoped
-   diff and passing checks. Intent goes to the checkpoint first, then a commit of only that phase's
-   paths, then a `phase-accepted` ledger line with the SHA. The worker pane closes before the next dispatch.
-6. **Close the run.** `implementation-summary.md`, `scripts/check-run-closed.py`, `run-completed`, and
-   the lease released last.
-
-Run state lives in files under `<plan-dir>/reports/herdr-cook-runs/<runId>/`, so a compacted or
-restarted coordinator recovers in the same session. The full loop, state files and failure map are in
-[docs/workflow.md](docs/workflow.md).
-
 ## Status and known limits
 
 - Automatic recovery prompts (the context guard) exist only on OMP. Other runtimes recover from the
   checkpoint files.
-- The guard is unit-tested; its behaviour under a real compaction has not been observed on 1.0.0.
+- The guard is unit-tested; its behaviour under a real compaction has not been observed yet.
 - Live smoke so far is bounded: two phases accepted and committed, completion check passing.
 - A worker may still write `plans/journals/*` outside its phase's write scope.
 - Cook availability for Claude Code and Codex must be discovered on your machine before the first dispatch.
