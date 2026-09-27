@@ -65,9 +65,9 @@ flowchart TB
     coord -->|"dispatch theo từng đợt"| workers
     subgraph workers["Mỗi phase một pane worker mới"]
         direction LR
-        w1["p01a01<br/>đợt 1"]
-        w2["p02a01<br/>đợt 2"]
-        w3["p03a01<br/>đợt 2"]
+        w1["Phase 1, đợt 1<br/>worker p01a01"]
+        w2["Phase 2, đợt 2<br/>worker p02a01"]
+        w3["Phase 3, đợt 2<br/>worker p03a01"]
     end
     workers <-.->|"file câu hỏi và câu trả lời"| mail[("mail/")]
     workers -->|"report: complete"| check{"Diff đúng phạm vi?<br/>Check pass?"}
@@ -76,12 +76,14 @@ flowchart TB
     commit --> state[("checkpoint.md<br/>ledger.jsonl")]
 ```
 
+Tên worker đọc theo phase và lần thử (attempt): `p02a01` là phase 2, lần 1. Nếu phải thay worker đó,
+worker mới là `p02a02`, nên nó không bao giờ nhận nhầm câu trả lời dành cho worker trước.
+
 1. **Kiểm cổng.** Đang ở trong Herdr, Herdr 0.9.1 trở lên, integration đều `current`. Thiếu cổng nào là
    dừng run.
 2. **Bảng đợt thực hiện.** Phase, dependency, phạm vi ghi, runtime và cách kiểm tra; phase độc lập chạy
    song song, mặc định hai worker.
-3. **Dispatch.** Mỗi attempt một pane mới và một agent mới (`p02a01`, rồi `p02a02`), nhận prompt từ một
-   file brief đã kiểm tra.
+3. **Dispatch.** Mỗi lần thử một pane mới và một agent mới, nhận prompt từ một file brief đã kiểm tra.
 4. **Giám sát.** Mỗi vòng quét mailbox và chờ từng worker. Terminal idle không phải là thành công; hết
    giờ chờ không phải là đồng ý.
 5. **Nghiệm thu và commit.** Phase được nghiệm thu khi có report `status: complete`, agent đã settle, diff

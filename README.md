@@ -65,9 +65,9 @@ flowchart TB
     coord -->|"dispatch, wave by wave"| workers
     subgraph workers["One fresh worker pane per phase"]
         direction LR
-        w1["p01a01<br/>wave 1"]
-        w2["p02a01<br/>wave 2"]
-        w3["p03a01<br/>wave 2"]
+        w1["Phase 1, wave 1<br/>worker p01a01"]
+        w2["Phase 2, wave 2<br/>worker p02a01"]
+        w3["Phase 3, wave 2<br/>worker p03a01"]
     end
     workers <-.->|"question and answer files"| mail[("mail/")]
     workers -->|"report: complete"| check{"Scoped diff?<br/>Checks pass?"}
@@ -76,11 +76,13 @@ flowchart TB
     commit --> state[("checkpoint.md<br/>ledger.jsonl")]
 ```
 
+Worker names read as phase and attempt: `p02a01` is phase 2, attempt 1. If that worker has to be
+replaced, the new one is `p02a02`, so it never picks up an answer meant for its predecessor.
+
 1. **Gates.** Inside Herdr, Herdr 0.9.1+, integrations current. Any failure stops the run.
 2. **Wave table.** Phases, dependencies, write scope, runtime and checks; independent phases run in
    parallel, two workers by default.
-3. **Dispatch.** A new pane and a new agent per attempt (`p02a01`, then `p02a02`), prompted from a
-   checked brief file.
+3. **Dispatch.** A new pane and a new agent per attempt, prompted from a checked brief file.
 4. **Supervise.** Each round scans the mailbox and waits on every worker. An idle terminal is not
    success; a timeout is not approval.
 5. **Accept and commit.** A phase is accepted on a `status: complete` report, a settled agent, a scoped
