@@ -104,7 +104,7 @@ và bảng lỗi nằm trong [docs/workflow.md](docs/workflow.md) (tiếng Anh).
   (bỏ `-g` nếu chỉ cài cho dự án hiện tại).
 - Integration của Herdr ở trạng thái `current` cho mọi runtime worker bạn dùng:
   `herdr integration status`, rồi `herdr integration install <kind>` cho kind nào còn thiếu.
-- [Engineer Kit của AgentKit](https://agentkit.best/?ref=OMG49S8R) (link giới thiệu) trong mỗi runtime
+- [Engineer Kit của AgentKit](https://agentkit.best/?ref=OMG49S8R) (link giới thiệu, giảm 30%) trong mỗi runtime
   worker, vì worker chạy `ak:cook`:
   `ak kit init engineer --target <runtime> --yes`
 - Python 3 (cho bước kiểm tra đóng run). Rất nên dùng Git: mỗi phase được nghiệm thu thành một commit.

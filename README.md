@@ -103,7 +103,7 @@ restarted coordinator recovers in the same session. The full loop, state files a
   (omit `-g` to install it into the current project only).
 - A Herdr integration at `current` for every worker runtime you use:
   `herdr integration status`, then `herdr integration install <kind>` for any that is missing.
-- [AgentKit's Engineer Kit](https://agentkit.best/?ref=OMG49S8R) (referral link) in each worker runtime,
+- [AgentKit's Engineer Kit](https://agentkit.best/?ref=OMG49S8R) (referral link, 30% discount) in each worker runtime,
   because workers run `ak:cook`:
   `ak kit init engineer --target <runtime> --yes`
 - Python 3 (for the completion check). Git is strongly recommended: each accepted phase becomes one commit.
