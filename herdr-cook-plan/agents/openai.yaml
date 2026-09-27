@@ -1,0 +1,4 @@
+interface:
+  display_name: "Herdr Cook Plan"
+  short_description: "Run plan phases in fresh Herdr worker panes"
+  default_prompt: "Use $herdr-cook-plan inside a Herdr pane with an existing AgentKit plan; dispatch one fresh worker per phase, relay questions through the mailbox, use --auto for orchestrator decisions, and verify and commit each phase."
