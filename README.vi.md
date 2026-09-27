@@ -17,6 +17,12 @@ Giấy phép MIT.
 > [nhóm Facebook Subscribers của Thieu Nguyen](https://www.facebook.com/groups/1312173340952529).
 > Issue và pull request ở đây luôn được chào đón nhưng có thể không được phản hồi.
 
+## Video giới thiệu
+
+<a href="https://www.youtube.com/watch?v=0oYd7s0JNHI"><img src="https://img.youtube.com/vi/0oYd7s0JNHI/maxresdefault.jpg" alt="Xem video giới thiệu Herdr Cook Plan trên YouTube" width="640"></a>
+
+[Xem trên YouTube](https://www.youtube.com/watch?v=0oYd7s0JNHI)
+
 ## Vì sao cần skill này
 
 Chạy cả một plan nhiều phase trong một session agent duy nhất sẽ hỏng theo những kiểu dễ đoán:

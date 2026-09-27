@@ -17,6 +17,12 @@ MIT licensed.
 > [Thieu Nguyen's Facebook Subscribers group](https://www.facebook.com/groups/1312173340952529).
 > Issues and pull requests here are welcome but may not get a response.
 
+## Intro video
+
+<a href="https://www.youtube.com/watch?v=0oYd7s0JNHI"><img src="https://img.youtube.com/vi/0oYd7s0JNHI/maxresdefault.jpg" alt="Watch the Herdr Cook Plan introduction on YouTube" width="640"></a>
+
+[Watch on YouTube](https://www.youtube.com/watch?v=0oYd7s0JNHI)
+
 ## Why this skill
 
 Running a whole multi-phase plan in one agent session breaks down in predictable ways:
